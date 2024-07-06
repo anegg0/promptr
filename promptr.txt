@@ -1,0 +1,221 @@
+I will give you a series of instructions on how to write docstrings for code snippets. Let's do it step by step.
+
+After I enter `@#INSTRUCTION_START#@`, the contents I write will be instructions, samples, and examples. At this stage, instructions are the rules you need to follow when generating the output. Samples and examples are for your reference.
+
+After your reply, I will enter `#@CODE_START@#` to indicate the following contents are code snippets, and the code ends with `#@END_CODE@#`.
+
+@#INSTRUCTION_START#@
+
+**Instructions:**
+
+1. **Write Docstrings**: I want you to write docstrings for code snippets.
+2. **Generate Full Code**: Please generate the full code with the added docstrings.
+3. **Include Examples**: When producing the output, include valid example code where relevant.
+4. **Comment Parameters**: When producing the output, comment every function parameter.
+5. **Preserve Existing Comments**: Do not delete the existing comments; instead, format them into JSDoc docstrings.
+6. **Validation**: Ensure your docstrings are valid in this repository: https://github.com/OffchainLabs/arbitrum-orbit-sdk.
+
+**Example:**
+
+Given the following code snippet:
+
+#@CODE_START@#
+
+```typescript
+export type CreateRollupFunctionParams = {
+  params: CreateRollupParams;
+  account: PrivateKeyAccount;
+  parentChainPublicClient: PublicClient;
+};
+
+export type CreateRollupResults = {
+  transaction: CreateRollupTransaction;
+  transactionReceipt: CreateRollupTransactionReceipt;
+  coreContracts: CoreContracts;
+};
+
+export async function createRollup({
+  params,
+  account,
+  parentChainPublicClient,
+}: CreateRollupFunctionParams): Promise<CreateRollupResults> {
+  const validatedParentChainPublicClient = validateParentChainPublicClient(
+    parentChainPublicClient,
+  );
+  const parentChain = validatedParentChainPublicClient.chain;
+  const nativeToken = params.nativeToken ?? zeroAddress;
+
+  if (nativeToken !== zeroAddress) {
+    await ensureCustomGasTokenAllowanceGrantedToRollupCreator({
+      nativeToken,
+      parentChainPublicClient: validatedParentChainPublicClient,
+      account,
+    });
+  }
+
+  const txRequest = await createRollupPrepareTransactionRequest({
+    params,
+    account: account.address,
+    publicClient: validatedParentChainPublicClient,
+  });
+
+  console.log(`Deploying the Rollup...`);
+  const txHash = await validatedParentChainPublicClient.sendRawTransaction({
+    serializedTransaction: await account.signTransaction(txRequest),
+  });
+
+  const txReceipt = createRollupPrepareTransactionReceipt(
+    await validatedParentChainPublicClient.waitForTransactionReceipt({
+      hash: txHash,
+    }),
+  );
+
+  const tx = createRollupPrepareTransaction(
+    await validatedParentChainPublicClient.getTransaction({ hash: txHash }),
+  );
+
+  console.log(
+    `Deployed in ${getBlockExplorerUrl(parentChain)}/tx/${txReceipt.transactionHash}`,
+  );
+  console.log(`Deployment transaction hash is ${txReceipt.transactionHash}`);
+
+  const coreContracts = txReceipt.getCoreContracts();
+
+  return {
+    transaction: tx,
+    transactionReceipt: txReceipt,
+    coreContracts,
+  };
+}
+```
+
+#@CODE_END@#
+
+The expected output with docstrings:
+
+#@CODE_START@#
+
+```typescript
+export type CreateRollupFunctionParams = {
+  params: CreateRollupParams;
+  account: PrivateKeyAccount;
+  parentChainPublicClient: PublicClient;
+};
+
+/**
+ * @typedef {Object} CreateRollupResults
+ * @property {CreateRollupTransaction} transaction - The transaction for deploying the core contracts.
+ * @property {CreateRollupTransactionReceipt} transactionReceipt - The transaction receipt.
+ * @property {CoreContracts} coreContracts - The core contracts.
+ */
+export type CreateRollupResults = {
+  transaction: CreateRollupTransaction;
+  transactionReceipt: CreateRollupTransactionReceipt;
+  coreContracts: CoreContracts;
+};
+
+/**
+ * Performs the transaction to deploy the chain's core contracts.
+ *
+ * This function validates the parent chain public client, checks custom gas token allowance,
+ * prepares the transaction request, signs and sends the transaction, and returns the transaction,
+ * receipt, and core contracts.
+ *
+ * @param {CreateRollupFunctionParams} createRollupFunctionParams - The parameters for creating a rollup.
+ * @param {CreateRollupParams} createRollupFunctionParams.params - The rollup creation parameters.
+ * @param {PrivateKeyAccount} createRollupFunctionParams.account - The rollup owner private key account.
+ * @param {PublicClient} createRollupFunctionParams.parentChainPublicClient - The parent chain public client.
+ * @returns {Promise<CreateRollupResults>} The transaction, receipt, and core contracts.
+ *
+ * @example
+ * const createRollupConfig = createRollupPrepareConfig({
+ *   chainId: BigInt(chainId),
+ *   owner: deployer.address,
+ *   chainConfig: prepareChainConfig({
+ *     chainId,
+ *     arbitrum: {
+ *       InitialChainOwner: deployer.address,
+ *       DataAvailabilityCommittee: true,
+ *     },
+ *   }),
+ * });
+ *
+ * const {
+ *   transaction,
+ *   transactionReceipt,
+ *   coreContracts,
+ * } = await createRollup({
+ *   params: {
+ *    config: createRollupConfig,
+ *    batchPoster,
+ *    validators,
+ *  },
+ *  account: deployer,
+ *  parentChainPublicClient,
+ * });
+ */
+export async function createRollup({
+  params,
+  account,
+  parentChainPublicClient,
+}: CreateRollupFunctionParams): Promise<CreateRollupResults> {
+  const validatedParentChainPublicClient = validateParentChainPublicClient(
+    parentChainPublicClient,
+  );
+  const parentChain = validatedParentChainPublicClient.chain;
+  const nativeToken = params.nativeToken ?? zeroAddress;
+
+  if (nativeToken !== zeroAddress) {
+    // Check Rollup Creator custom gas token spending allowance and approve if necessary
+    await ensureCustomGasTokenAllowanceGrantedToRollupCreator({
+      nativeToken,
+      parentChainPublicClient: validatedParentChainPublicClient,
+      account,
+    });
+  }
+
+  // Prepare the transaction for deploying the core contracts
+  const txRequest = await createRollupPrepareTransactionRequest({
+    params,
+    account: account.address,
+    publicClient: validatedParentChainPublicClient,
+  });
+
+  // Sign and send the transaction
+  console.log(`Deploying the Rollup...`);
+  const txHash = await validatedParentChainPublicClient.sendRawTransaction({
+    serializedTransaction: await account.signTransaction(txRequest),
+  });
+
+  // Get the transaction receipt after waiting for the transaction to complete
+  const txReceipt = createRollupPrepareTransactionReceipt(
+    await validatedParentChainPublicClient.waitForTransactionReceipt({
+      hash: txHash,
+    }),
+  );
+
+  // Get the transaction
+  const tx = createRollupPrepareTransaction(
+    await validatedParentChainPublicClient.getTransaction({ hash: txHash }),
+  );
+
+  console.log(
+    `Deployed in ${getBlockExplorerUrl(parentChain)}/tx/${txReceipt.transactionHash}`,
+  );
+  console.log(`Deployment transaction hash is ${txReceipt.transactionHash}`);
+
+  const coreContracts = txReceipt.getCoreContracts();
+
+  return {
+    transaction: tx,
+    transactionReceipt: txReceipt,
+    coreContracts,
+  };
+}
+```
+
+#@CODE_END@#
+
+Please write docstrings for the following file(s): ./upgradeExecutorPrepareRemoveExecutorTransactionRequest.ts
+
+`@#INSTRUCTION_END#@`
